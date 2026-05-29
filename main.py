@@ -290,7 +290,7 @@ async def notifymode(
 
 @bot.tree.command(
     name="notify-add",
-    description="通知対象追加"
+    description="自分に通知する相手を追加"
 )
 @app_commands.describe(
     user="通知したいユーザー"
@@ -390,7 +390,7 @@ async def notifylist(interaction: discord.Interaction):
 
 @bot.tree.command(
     name="listener-add",
-    description="自分を通知する相手を追加"
+    description="自分が参加したとき通知する相手を追加"
 )
 @app_commands.describe(
     user="通知する相手"
@@ -485,7 +485,7 @@ async def listenerlist(interaction: discord.Interaction):
     )
 
 # =========================
-# /admin-
+# /admin-setchannel
 # =========================
 
 @bot.tree.command(
