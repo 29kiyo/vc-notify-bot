@@ -42,10 +42,6 @@ intents.voice_states = True
 intents.members = True
 intents.guilds = True
 
-# =========================
-# Bot
-# =========================
-
 bot = commands.Bot(
     command_prefix=None,
     intents=intents
@@ -59,57 +55,50 @@ SETTINGS_FILE = "notify_settings.json"
 CHANNELS_FILE = "channels.json"
 
 # =========================
-# 通知設定
+# JSON
 # =========================
 
-def load_settings():
+def load_json(path):
 
-    if not os.path.exists(SETTINGS_FILE):
+    if not os.path.exists(path):
         return {}
 
-    with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+    with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
-def save_settings(data):
+def save_json(path, data):
 
-    with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-notify_settings = load_settings()
+notify_settings = load_json(SETTINGS_FILE)
+notify_channels = load_json(CHANNELS_FILE)
 
 # =========================
-# 通知チャンネル設定
+# ユーザーデータ
 # =========================
 
-def load_channels():
+def get_user_data(user_id: int):
 
-    if not os.path.exists(CHANNELS_FILE):
-        return {}
+    uid = str(user_id)
 
-    with open(CHANNELS_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+    if uid not in notify_settings:
 
-def save_channels(data):
+        notify_settings[uid] = {
+            "enabled": True,
+            "mode": "all",
+            "targets": [],
+            "listeners": []
+        }
 
-    with open(CHANNELS_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-
-notify_channels = load_channels()
-
-# =========================
-# 通知ON/OFF取得
-# =========================
-
-def is_notify_enabled(user_id: int):
-    return notify_settings.get(str(user_id), True)
+    return notify_settings[uid]
 
 # =========================
-# 連続通知防止
+# クールダウン
 # =========================
 
 last_notify = {}
-
-COOLDOWN = 300  # 5分
+COOLDOWN = 300
 
 # =========================
 # VC参加監視
@@ -118,21 +107,14 @@ COOLDOWN = 300  # 5分
 @bot.event
 async def on_voice_state_update(member, before, after):
 
-    # Bot除外
     if member.bot:
         return
 
-    # VC変更なし
     if before.channel == after.channel:
         return
 
-    # VC退出無視
     if after.channel is None:
         return
-
-    # =========================
-    # クールダウン
-    # =========================
 
     now = time.time()
 
@@ -143,12 +125,8 @@ async def on_voice_state_update(member, before, after):
 
     last_notify[member.id] = now
 
-    vc = after.channel
     guild = member.guild
-
-    # =========================
-    # 通知チャンネル取得
-    # =========================
+    vc = after.channel
 
     guild_id = str(guild.id)
 
@@ -162,45 +140,73 @@ async def on_voice_state_update(member, before, after):
     if send_channel is None:
         return
 
-    # =========================
-    # メンション対象検索
-    # =========================
-
     mention_targets = []
+
+    # =========================
+    # 通常通知
+    # =========================
 
     for m in guild.members:
 
-        # Bot除外
         if m.bot:
             continue
 
-        # 同じVC参加者除外
         if m.voice and m.voice.channel == vc:
             continue
 
-        # 通知OFF除外
-        if not is_notify_enabled(m.id):
+        settings = get_user_data(m.id)
+
+        if not settings["enabled"]:
             continue
 
-        mention_targets.append(m.mention)
+        # 全体通知
+        if settings["mode"] == "all":
 
+            if m.mention not in mention_targets:
+                mention_targets.append(m.mention)
+
+        # 選択通知
+        elif settings["mode"] == "selected":
+
+            if member.id in settings["targets"]:
+
+                if m.mention not in mention_targets:
+                    mention_targets.append(m.mention)
+
+    # =========================
+    # listener通知
+    # =========================
+
+    member_settings = get_user_data(member.id)
+
+    for uid in member_settings["listeners"]:
+
+        target = guild.get_member(uid)
+
+        if not target:
+            continue
+
+        if target.bot:
+            continue
+
+        if target.voice and target.voice.channel == vc:
+            continue
+
+        if target.mention not in mention_targets:
+            mention_targets.append(target.mention)
+
+    # =========================
     # 対象なし
+    # =========================
+
     if not mention_targets:
         return
-
-    # =========================
-    # 通知文
-    # =========================
 
     text = (
         f"{member.display_name} が "
         f"🎤 {vc.name} に参加しました！\n"
         + " ".join(mention_targets)
     )
-
-    # =========================
-    # 送信
-    # =========================
 
     await send_channel.send(text)
 
@@ -210,7 +216,7 @@ async def on_voice_state_update(member, before, after):
 
 @bot.tree.command(
     name="notify",
-    description="通知設定を変更"
+    description="通知ON/OFF"
 )
 @app_commands.describe(
     mode="on または off"
@@ -230,12 +236,251 @@ async def notify(
         )
         return
 
-    notify_settings[str(interaction.user.id)] = (mode == "on")
+    data = get_user_data(interaction.user.id)
 
-    save_settings(notify_settings)
+    data["enabled"] = (mode == "on")
+
+    save_json(SETTINGS_FILE, notify_settings)
 
     await interaction.response.send_message(
         f"通知設定を {mode} にしました",
+        ephemeral=True
+    )
+
+# =========================
+# /notifymode
+# =========================
+
+@bot.tree.command(
+    name="notifymode",
+    description="通知モード変更"
+)
+@app_commands.describe(
+    mode="all または selected"
+)
+async def notifymode(
+    interaction: discord.Interaction,
+    mode: str
+):
+
+    mode = mode.lower()
+
+    if mode not in ["all", "selected"]:
+
+        await interaction.response.send_message(
+            "all または selected を指定してください",
+            ephemeral=True
+        )
+        return
+
+    data = get_user_data(interaction.user.id)
+
+    data["mode"] = mode
+
+    save_json(SETTINGS_FILE, notify_settings)
+
+    await interaction.response.send_message(
+        f"通知モードを {mode} にしました",
+        ephemeral=True
+    )
+
+# =========================
+# /addnotify
+# =========================
+
+@bot.tree.command(
+    name="addnotify",
+    description="通知対象追加"
+)
+@app_commands.describe(
+    user="通知したいユーザー"
+)
+async def addnotify(
+    interaction: discord.Interaction,
+    user: discord.Member
+):
+
+    if user.bot:
+
+        await interaction.response.send_message(
+            "Botは追加できません",
+            ephemeral=True
+        )
+        return
+
+    data = get_user_data(interaction.user.id)
+
+    if user.id not in data["targets"]:
+        data["targets"].append(user.id)
+
+    save_json(SETTINGS_FILE, notify_settings)
+
+    await interaction.response.send_message(
+        f"{user.mention} を通知対象へ追加しました",
+        ephemeral=True
+    )
+
+# =========================
+# /removenotify
+# =========================
+
+@bot.tree.command(
+    name="removenotify",
+    description="通知対象削除"
+)
+@app_commands.describe(
+    user="削除するユーザー"
+)
+async def removenotify(
+    interaction: discord.Interaction,
+    user: discord.Member
+):
+
+    data = get_user_data(interaction.user.id)
+
+    if user.id in data["targets"]:
+        data["targets"].remove(user.id)
+
+    save_json(SETTINGS_FILE, notify_settings)
+
+    await interaction.response.send_message(
+        f"{user.mention} を通知対象から削除しました",
+        ephemeral=True
+    )
+
+# =========================
+# /notifylist
+# =========================
+
+@bot.tree.command(
+    name="notifylist",
+    description="通知対象一覧"
+)
+async def notifylist(interaction: discord.Interaction):
+
+    data = get_user_data(interaction.user.id)
+
+    targets = data["targets"]
+
+    if not targets:
+
+        await interaction.response.send_message(
+            "通知対象はありません",
+            ephemeral=True
+        )
+        return
+
+    text = []
+
+    for uid in targets:
+
+        user = interaction.guild.get_member(uid)
+
+        if user:
+            text.append(user.mention)
+
+    await interaction.response.send_message(
+        "通知対象一覧:\n" + "\n".join(text),
+        ephemeral=True
+    )
+
+# =========================
+# /addlistener
+# =========================
+
+@bot.tree.command(
+    name="addlistener",
+    description="自分を通知する相手を追加"
+)
+@app_commands.describe(
+    user="通知する相手"
+)
+async def addlistener(
+    interaction: discord.Interaction,
+    user: discord.Member
+):
+
+    if user.bot:
+
+        await interaction.response.send_message(
+            "Botは追加できません",
+            ephemeral=True
+        )
+        return
+
+    data = get_user_data(interaction.user.id)
+
+    if user.id not in data["listeners"]:
+        data["listeners"].append(user.id)
+
+    save_json(SETTINGS_FILE, notify_settings)
+
+    await interaction.response.send_message(
+        f"{user.mention} を通知先へ追加しました",
+        ephemeral=True
+    )
+
+# =========================
+# /removelistener
+# =========================
+
+@bot.tree.command(
+    name="removelistener",
+    description="通知先削除"
+)
+@app_commands.describe(
+    user="削除する相手"
+)
+async def removelistener(
+    interaction: discord.Interaction,
+    user: discord.Member
+):
+
+    data = get_user_data(interaction.user.id)
+
+    if user.id in data["listeners"]:
+        data["listeners"].remove(user.id)
+
+    save_json(SETTINGS_FILE, notify_settings)
+
+    await interaction.response.send_message(
+        f"{user.mention} を通知先から削除しました",
+        ephemeral=True
+    )
+
+# =========================
+# /listenerlist
+# =========================
+
+@bot.tree.command(
+    name="listenerlist",
+    description="通知先一覧"
+)
+async def listenerlist(interaction: discord.Interaction):
+
+    data = get_user_data(interaction.user.id)
+
+    listeners = data["listeners"]
+
+    if not listeners:
+
+        await interaction.response.send_message(
+            "通知先はありません",
+            ephemeral=True
+        )
+        return
+
+    text = []
+
+    for uid in listeners:
+
+        user = interaction.guild.get_member(uid)
+
+        if user:
+            text.append(user.mention)
+
+    await interaction.response.send_message(
+        "通知先一覧:\n" + "\n".join(text),
         ephemeral=True
     )
 
@@ -245,7 +490,7 @@ async def notify(
 
 @bot.tree.command(
     name="setchannel",
-    description="通知チャンネルを設定"
+    description="通知チャンネル設定"
 )
 @checks.has_permissions(administrator=True)
 async def setchannel(interaction: discord.Interaction):
@@ -254,7 +499,7 @@ async def setchannel(interaction: discord.Interaction):
 
     notify_channels[guild_id] = interaction.channel.id
 
-    save_channels(notify_channels)
+    save_json(CHANNELS_FILE, notify_channels)
 
     await interaction.response.send_message(
         f"通知チャンネルを {interaction.channel.mention} に設定しました",
