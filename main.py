@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
+from discord.app_commands import checks
 from flask import Flask
 from threading import Thread
 import json
@@ -51,13 +52,14 @@ bot = commands.Bot(
 )
 
 # =========================
-# 設定ファイル
+# ファイル
 # =========================
 
 SETTINGS_FILE = "notify_settings.json"
+CHANNELS_FILE = "channels.json"
 
 # =========================
-# 設定読み込み
+# 通知設定
 # =========================
 
 def load_settings():
@@ -68,10 +70,6 @@ def load_settings():
     with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
-# =========================
-# 設定保存
-# =========================
-
 def save_settings(data):
 
     with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
@@ -80,7 +78,26 @@ def save_settings(data):
 notify_settings = load_settings()
 
 # =========================
-# 通知設定取得
+# 通知チャンネル設定
+# =========================
+
+def load_channels():
+
+    if not os.path.exists(CHANNELS_FILE):
+        return {}
+
+    with open(CHANNELS_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def save_channels(data):
+
+    with open(CHANNELS_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+notify_channels = load_channels()
+
+# =========================
+# 通知ON/OFF取得
 # =========================
 
 def is_notify_enabled(user_id: int):
@@ -92,8 +109,7 @@ def is_notify_enabled(user_id: int):
 
 last_notify = {}
 
-# 秒
-COOLDOWN = 300
+COOLDOWN = 300  # 5分
 
 # =========================
 # VC参加監視
@@ -110,7 +126,7 @@ async def on_voice_state_update(member, before, after):
     if before.channel == after.channel:
         return
 
-    # VC退出は無視
+    # VC退出無視
     if after.channel is None:
         return
 
@@ -130,11 +146,27 @@ async def on_voice_state_update(member, before, after):
     vc = after.channel
     guild = member.guild
 
-    mention_targets = []
+    # =========================
+    # 通知チャンネル取得
+    # =========================
+
+    guild_id = str(guild.id)
+
+    channel_id = notify_channels.get(guild_id)
+
+    if not channel_id:
+        return
+
+    send_channel = guild.get_channel(channel_id)
+
+    if send_channel is None:
+        return
 
     # =========================
     # メンション対象検索
     # =========================
+
+    mention_targets = []
 
     for m in guild.members:
 
@@ -156,6 +188,10 @@ async def on_voice_state_update(member, before, after):
     if not mention_targets:
         return
 
+    # =========================
+    # 通知文
+    # =========================
+
     text = (
         f"{member.display_name} が "
         f"🎤 {vc.name} に参加しました！\n"
@@ -163,25 +199,10 @@ async def on_voice_state_update(member, before, after):
     )
 
     # =========================
-    # 送信チャンネル検索
+    # 送信
     # =========================
 
-    send_channel = None
-
-    for channel in guild.text_channels:
-
-        permissions = channel.permissions_for(guild.me)
-
-        if permissions.send_messages:
-            send_channel = channel
-            break
-
-    # =========================
-    # メッセージ送信
-    # =========================
-
-    if send_channel:
-        await send_channel.send(text)
+    await send_channel.send(text)
 
 # =========================
 # /notify
@@ -215,6 +236,28 @@ async def notify(
 
     await interaction.response.send_message(
         f"通知設定を {mode} にしました",
+        ephemeral=True
+    )
+
+# =========================
+# /setchannel
+# =========================
+
+@bot.tree.command(
+    name="setchannel",
+    description="通知チャンネルを設定"
+)
+@checks.has_permissions(administrator=True)
+async def setchannel(interaction: discord.Interaction):
+
+    guild_id = str(interaction.guild.id)
+
+    notify_channels[guild_id] = interaction.channel.id
+
+    save_channels(notify_channels)
+
+    await interaction.response.send_message(
+        f"通知チャンネルを {interaction.channel.mention} に設定しました",
         ephemeral=True
     )
 
