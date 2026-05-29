@@ -7,27 +7,33 @@ import json
 import os
 import time
 
+# =========================
+# TOKEN
+# =========================
+
 TOKEN = os.getenv("TOKEN")
 
 # =========================
-# Flask
+# Flask (Render用)
 # =========================
 
-app = Flask('')
+app = Flask(__name__)
 
-@app.route('/')
+@app.route("/")
 def home():
     return "Bot is running"
 
 def run_web():
-    app.run(host='0.0.0.0', port=10000)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
 
 def keep_alive():
     t = Thread(target=run_web)
+    t.daemon = True
     t.start()
 
 # =========================
-# Discord
+# Discord Intents
 # =========================
 
 intents = discord.Intents.default()
@@ -35,10 +41,18 @@ intents.voice_states = True
 intents.members = True
 intents.guilds = True
 
+# =========================
+# Bot
+# =========================
+
 bot = commands.Bot(
     command_prefix=None,
     intents=intents
 )
+
+# =========================
+# 設定ファイル
+# =========================
 
 SETTINGS_FILE = "notify_settings.json"
 
@@ -54,6 +68,10 @@ def load_settings():
     with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
+# =========================
+# 設定保存
+# =========================
+
 def save_settings(data):
 
     with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
@@ -62,7 +80,7 @@ def save_settings(data):
 notify_settings = load_settings()
 
 # =========================
-# 通知設定
+# 通知設定取得
 # =========================
 
 def is_notify_enabled(user_id: int):
@@ -74,23 +92,31 @@ def is_notify_enabled(user_id: int):
 
 last_notify = {}
 
+# 秒
 COOLDOWN = 300
 
 # =========================
-# VC監視
+# VC参加監視
 # =========================
 
 @bot.event
 async def on_voice_state_update(member, before, after):
 
+    # Bot除外
     if member.bot:
         return
 
+    # VC変更なし
     if before.channel == after.channel:
         return
 
+    # VC退出は無視
     if after.channel is None:
         return
+
+    # =========================
+    # クールダウン
+    # =========================
 
     now = time.time()
 
@@ -106,19 +132,27 @@ async def on_voice_state_update(member, before, after):
 
     mention_targets = []
 
+    # =========================
+    # メンション対象検索
+    # =========================
+
     for m in guild.members:
 
+        # Bot除外
         if m.bot:
             continue
 
+        # 同じVC参加者除外
         if m.voice and m.voice.channel == vc:
             continue
 
+        # 通知OFF除外
         if not is_notify_enabled(m.id):
             continue
 
         mention_targets.append(m.mention)
 
+    # 対象なし
     if not mention_targets:
         return
 
@@ -127,6 +161,10 @@ async def on_voice_state_update(member, before, after):
         f"🎤 {vc.name} に参加しました！\n"
         + " ".join(mention_targets)
     )
+
+    # =========================
+    # 送信チャンネル検索
+    # =========================
 
     send_channel = None
 
@@ -138,6 +176,10 @@ async def on_voice_state_update(member, before, after):
             send_channel = channel
             break
 
+    # =========================
+    # メッセージ送信
+    # =========================
+
     if send_channel:
         await send_channel.send(text)
 
@@ -147,7 +189,7 @@ async def on_voice_state_update(member, before, after):
 
 @bot.tree.command(
     name="notify",
-    description="通知設定変更"
+    description="通知設定を変更"
 )
 @app_commands.describe(
     mode="on または off"
@@ -162,7 +204,7 @@ async def notify(
     if mode not in ["on", "off"]:
 
         await interaction.response.send_message(
-            "on または off を指定",
+            "on または off を指定してください",
             ephemeral=True
         )
         return
@@ -177,7 +219,7 @@ async def notify(
     )
 
 # =========================
-# 起動
+# 起動時
 # =========================
 
 @bot.event
@@ -189,6 +231,10 @@ async def on_ready():
     print(f"ログイン: {bot.user}")
     print("Bot起動完了")
     print("------------------")
+
+# =========================
+# 起動
+# =========================
 
 keep_alive()
 bot.run(TOKEN)
