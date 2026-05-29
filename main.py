@@ -248,11 +248,11 @@ async def notify(
     )
 
 # =========================
-# /notifymode
+# /notify-mode
 # =========================
 
 @bot.tree.command(
-    name="notifymode",
+    name="notify-mode",
     description="通知モード変更"
 )
 @app_commands.describe(
@@ -285,11 +285,11 @@ async def notifymode(
     )
 
 # =========================
-# /addnotify
+# /notify-add
 # =========================
 
 @bot.tree.command(
-    name="addnotify",
+    name="notify-add",
     description="通知対象追加"
 )
 @app_commands.describe(
@@ -321,11 +321,11 @@ async def addnotify(
     )
 
 # =========================
-# /removenotify
+# /notify-remove
 # =========================
 
 @bot.tree.command(
-    name="removenotify",
+    name="notify-remove",
     description="通知対象削除"
 )
 @app_commands.describe(
@@ -349,11 +349,11 @@ async def removenotify(
     )
 
 # =========================
-# /notifylist
+# /notify-list
 # =========================
 
 @bot.tree.command(
-    name="notifylist",
+    name="notify-list",
     description="通知対象一覧"
 )
 async def notifylist(interaction: discord.Interaction):
@@ -385,11 +385,11 @@ async def notifylist(interaction: discord.Interaction):
     )
 
 # =========================
-# /addlistener
+# /listener-add
 # =========================
 
 @bot.tree.command(
-    name="addlistener",
+    name="listener-add",
     description="自分を通知する相手を追加"
 )
 @app_commands.describe(
@@ -421,11 +421,11 @@ async def addlistener(
     )
 
 # =========================
-# /removelistener
+# /listener-remove
 # =========================
 
 @bot.tree.command(
-    name="removelistener",
+    name="listener-remove",
     description="通知先削除"
 )
 @app_commands.describe(
@@ -449,11 +449,11 @@ async def removelistener(
     )
 
 # =========================
-# /listenerlist
+# /listener-list
 # =========================
 
 @bot.tree.command(
-    name="listenerlist",
+    name="listener-list",
     description="通知先一覧"
 )
 async def listenerlist(interaction: discord.Interaction):
@@ -485,11 +485,11 @@ async def listenerlist(interaction: discord.Interaction):
     )
 
 # =========================
-# /setchannel
+# /admin-
 # =========================
 
 @bot.tree.command(
-    name="setchannel",
+    name="admin-setchannel",
     description="通知チャンネル設定"
 )
 @checks.has_permissions(administrator=True)
