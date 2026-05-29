@@ -1,11 +1,34 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
+from flask import Flask
+from threading import Thread
 import json
 import os
 import time
 
 TOKEN = os.getenv("TOKEN")
+
+# =========================
+# Flask
+# =========================
+
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is running"
+
+def run_web():
+    app.run(host='0.0.0.0', port=10000)
+
+def keep_alive():
+    t = Thread(target=run_web)
+    t.start()
+
+# =========================
+# Discord
+# =========================
 
 intents = discord.Intents.default()
 intents.voice_states = True
@@ -13,13 +36,18 @@ intents.members = True
 intents.guilds = True
 
 bot = commands.Bot(
-    command_prefix="!",
+    command_prefix=None,
     intents=intents
 )
 
 SETTINGS_FILE = "notify_settings.json"
 
+# =========================
+# 設定読み込み
+# =========================
+
 def load_settings():
+
     if not os.path.exists(SETTINGS_FILE):
         return {}
 
@@ -27,17 +55,30 @@ def load_settings():
         return json.load(f)
 
 def save_settings(data):
+
     with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 notify_settings = load_settings()
 
+# =========================
+# 通知設定
+# =========================
+
 def is_notify_enabled(user_id: int):
     return notify_settings.get(str(user_id), True)
+
+# =========================
+# 連続通知防止
+# =========================
 
 last_notify = {}
 
 COOLDOWN = 300
+
+# =========================
+# VC監視
+# =========================
 
 @bot.event
 async def on_voice_state_update(member, before, after):
@@ -100,6 +141,10 @@ async def on_voice_state_update(member, before, after):
     if send_channel:
         await send_channel.send(text)
 
+# =========================
+# /notify
+# =========================
+
 @bot.tree.command(
     name="notify",
     description="通知設定変更"
@@ -131,6 +176,10 @@ async def notify(
         ephemeral=True
     )
 
+# =========================
+# 起動
+# =========================
+
 @bot.event
 async def on_ready():
 
@@ -141,4 +190,5 @@ async def on_ready():
     print("Bot起動完了")
     print("------------------")
 
+keep_alive()
 bot.run(TOKEN)
