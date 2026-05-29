@@ -19,10 +19,6 @@ bot = commands.Bot(
 
 SETTINGS_FILE = "notify_settings.json"
 
-# =========================
-# 設定読み込み
-# =========================
-
 def load_settings():
     if not os.path.exists(SETTINGS_FILE):
         return {}
@@ -36,24 +32,12 @@ def save_settings(data):
 
 notify_settings = load_settings()
 
-# =========================
-# 通知設定
-# =========================
-
 def is_notify_enabled(user_id: int):
     return notify_settings.get(str(user_id), True)
-
-# =========================
-# 連続通知防止
-# =========================
 
 last_notify = {}
 
 COOLDOWN = 300
-
-# =========================
-# VC監視
-# =========================
 
 @bot.event
 async def on_voice_state_update(member, before, after):
@@ -116,10 +100,6 @@ async def on_voice_state_update(member, before, after):
     if send_channel:
         await send_channel.send(text)
 
-# =========================
-# /notify
-# =========================
-
 @bot.tree.command(
     name="notify",
     description="通知設定変更"
@@ -150,10 +130,6 @@ async def notify(
         f"通知設定を {mode} にしました",
         ephemeral=True
     )
-
-# =========================
-# 起動
-# =========================
 
 @bot.event
 async def on_ready():
