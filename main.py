@@ -43,7 +43,7 @@ intents.members = True
 intents.guilds = True
 
 bot = commands.Bot(
-    command_prefix=None,
+    command_prefix="!",
     intents=intents
 )
 
@@ -102,7 +102,7 @@ def get_user_data(guild_id: int, user_id: int):
 # =========================
 
 last_notify = {}
-COOLDOWN = 300
+COOLDOWN = 10
 
 # =========================
 # VC参加監視
