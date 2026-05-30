@@ -843,30 +843,32 @@ async def removelistener(
 ):
 
     res = (
-        supabase.table("listeners")
+        supabase
+        .table("listeners")
         .select("*")
         .eq("guild_id", str(interaction.guild.id))
         .eq("owner_id", str(interaction.user.id))
         .eq("listener_id", str(user.id))
         .execute()
     )
-    
+
     if not res.data:
-    
+
         await interaction.response.send_message(
             f"{user.mention} は登録されていません",
             ephemeral=True
         )
         return
-    
-    supabase.table(
-        "listeners"
-    ).delete()
-    .eq("guild_id", str(interaction.guild.id))
-    .eq("owner_id", str(interaction.user.id))
-    .eq("listener_id", str(user.id))
-    .execute()
 
+    (
+        supabase
+        .table("listeners")
+        .delete()
+        .eq("guild_id", str(interaction.guild.id))
+        .eq("owner_id", str(interaction.user.id))
+        .eq("listener_id", str(user.id))
+        .execute()
+    )
 
     await interaction.response.send_message(
         f"{user.mention} を通知先から削除しました",
