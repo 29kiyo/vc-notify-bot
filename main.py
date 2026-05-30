@@ -78,20 +78,24 @@ notify_channels = load_json(CHANNELS_FILE)
 # ユーザーデータ
 # =========================
 
-def get_user_data(user_id: int):
+def get_user_data(guild_id: int, user_id: int):
 
+    gid = str(guild_id)
     uid = str(user_id)
 
-    if uid not in notify_settings:
+    if gid not in notify_settings:
+        notify_settings[gid] = {}
 
-        notify_settings[uid] = {
+    if uid not in notify_settings[gid]:
+
+        notify_settings[gid][uid] = {
             "enabled": True,
             "mode": "all",
             "targets": [],
             "listeners": []
         }
 
-    return notify_settings[uid]
+    return notify_settings[gid][uid]
 
 # =========================
 # クールダウン
@@ -154,7 +158,10 @@ async def on_voice_state_update(member, before, after):
         if m.voice and m.voice.channel == vc:
             continue
 
-        settings = get_user_data(m.id)
+        settings = get_user_data(
+            guild.id,
+            m.id
+        )
 
         if not settings["enabled"]:
             continue
@@ -177,7 +184,10 @@ async def on_voice_state_update(member, before, after):
     # listener通知
     # =========================
 
-    member_settings = get_user_data(member.id)
+    member_settings = get_user_data(
+        guild.id,
+        member.id
+    )
 
     for uid in member_settings["listeners"]:
 
@@ -209,6 +219,115 @@ async def on_voice_state_update(member, before, after):
     )
 
     await send_channel.send(text)
+# ============================
+# list remove
+# ============================
+class NotifyRemoveSelect(discord.ui.Select):
+
+    def __init__(self, owner_id, users):
+
+        self.owner_id = owner_id
+
+        options = [
+            discord.SelectOption(
+                label=user.display_name,
+                value=str(user.id)
+            )
+            for user in users
+        ]
+
+        super().__init__(
+            placeholder="通知対象を削除",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+
+        data = get_user_data(
+            interaction.guild.id,
+            self.owner_id
+        )
+
+        uid = int(self.values[0])
+
+        if uid in data["targets"]:
+            data["targets"].remove(uid)
+
+        save_json(SETTINGS_FILE, notify_settings)
+
+        user = interaction.guild.get_member(uid)
+
+        await interaction.response.send_message(
+            f"{user.mention} を通知対象から削除しました",
+            ephemeral=True
+        )
+
+
+class NotifyRemoveView(discord.ui.View):
+
+    def __init__(self, owner_id, users):
+
+        super().__init__(timeout=300)
+
+        self.add_item(
+            NotifyRemoveSelect(owner_id, users)
+        )
+
+
+class ListenerRemoveSelect(discord.ui.Select):
+
+    def __init__(self, owner_id, users):
+
+        self.owner_id = owner_id
+
+        options = [
+            discord.SelectOption(
+                label=user.display_name,
+                value=str(user.id)
+            )
+            for user in users
+        ]
+
+        super().__init__(
+            placeholder="通知先を削除",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+
+        data = get_user_data(
+            interaction.guild.id,
+            self.owner_id
+        )
+
+        uid = int(self.values[0])
+
+        if uid in data["listeners"]:
+            data["listeners"].remove(uid)
+
+        save_json(SETTINGS_FILE, notify_settings)
+
+        user = interaction.guild.get_member(uid)
+
+        await interaction.response.send_message(
+            f"{user.mention} を通知先から削除しました",
+            ephemeral=True
+        )
+
+
+class ListenerRemoveView(discord.ui.View):
+
+    def __init__(self, owner_id, users):
+
+        super().__init__(timeout=300)
+
+        self.add_item(
+            ListenerRemoveSelect(owner_id, users)
+        )
 
 # =========================
 # /notify
@@ -232,7 +351,10 @@ async def notify(
     mode: app_commands.Choice[str]
 ):
 
-    data = get_user_data(interaction.user.id)
+    data = get_user_data(
+        interaction.guild.id,
+        interaction.user.id
+    )
 
     data["enabled"] = (mode.value == "on")
 
@@ -265,7 +387,10 @@ async def notify_mode(
     mode: app_commands.Choice[str]
 ):
 
-    data = get_user_data(interaction.user.id)
+    data = get_user_data(
+        interaction.guild.id,
+        interaction.user.id
+    )
 
     data["mode"] = mode.value
 
@@ -300,7 +425,10 @@ async def addnotify(
         )
         return
 
-    data = get_user_data(interaction.user.id)
+    data = get_user_data(
+        interaction.guild.id,
+        interaction.user.id
+    )
 
     if user.id in data["targets"]:
 
@@ -335,7 +463,10 @@ async def removenotify(
     user: discord.Member
 ):
 
-    data = get_user_data(interaction.user.id)
+    data = get_user_data(
+        interaction.guild.id,
+        interaction.user.id
+    )
 
     if user.id not in data["targets"]:
 
@@ -364,11 +495,15 @@ async def removenotify(
 )
 async def notifylist(interaction: discord.Interaction):
 
-    data = get_user_data(interaction.user.id)
+    data = get_user_data(
+        interaction.guild.id,
+        interaction.user.id
+    )
 
     targets = data["targets"]
 
     users = []
+    users_obj = []
 
     for uid in targets:
 
@@ -376,6 +511,7 @@ async def notifylist(interaction: discord.Interaction):
 
         if user:
             users.append(user.display_name)
+            users_obj.append(user)
 
     embed = discord.Embed(
         title=f"📋 通知対象一覧 ({len(users)}人)"
@@ -388,14 +524,24 @@ async def notifylist(interaction: discord.Interaction):
             for i, name in enumerate(users, start=1)
         )
 
+        await interaction.response.send_message(
+            embed=embed,
+            view=NotifyRemoveView(
+                interaction.user.id,
+                users_obj
+            ),
+            ephemeral=True
+        )
+
     else:
 
         embed.description = "登録されていません"
 
-    await interaction.response.send_message(
-        embed=embed,
-        ephemeral=True
-    )
+        await interaction.response.send_message(
+            embed=embed,
+            ephemeral=True
+        )
+        
 # =========================
 # /listener-add
 # =========================
@@ -420,7 +566,10 @@ async def addlistener(
         )
         return
 
-    data = get_user_data(interaction.user.id)
+    data = get_user_data(
+        interaction.guild.id,
+        interaction.user.id
+    )
 
     if user.id in data["listeners"]:
 
@@ -455,7 +604,10 @@ async def removelistener(
     user: discord.Member
 ):
 
-    data = get_user_data(interaction.user.id)
+    data = get_user_data(
+        interaction.guild.id,
+        interaction.user.id
+    )
 
     if user.id not in data["listeners"]:
 
@@ -484,11 +636,15 @@ async def removelistener(
 )
 async def listenerlist(interaction: discord.Interaction):
 
-    data = get_user_data(interaction.user.id)
+    data = get_user_data(
+        interaction.guild.id,
+        interaction.user.id
+    )
 
     listeners = data["listeners"]
 
     users = []
+    users_obj = []
 
     for uid in listeners:
 
@@ -496,6 +652,7 @@ async def listenerlist(interaction: discord.Interaction):
 
         if user:
             users.append(user.display_name)
+            users_obj.append(user)
 
     embed = discord.Embed(
         title=f"📋 通知先一覧 ({len(users)}人)"
@@ -508,14 +665,23 @@ async def listenerlist(interaction: discord.Interaction):
             for i, name in enumerate(users, start=1)
         )
 
+        await interaction.response.send_message(
+            embed=embed,
+            view=ListenerRemoveView(
+                interaction.user.id,
+                users_obj
+            ),
+            ephemeral=True
+        )
+
     else:
 
         embed.description = "登録されていません"
 
-    await interaction.response.send_message(
-        embed=embed,
-        ephemeral=True
-    )
+        await interaction.response.send_message(
+            embed=embed,
+            ephemeral=True
+        )
 
 # =========================
 # /help
