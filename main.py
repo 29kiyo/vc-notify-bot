@@ -671,29 +671,32 @@ async def removenotify(
 ):
 
     res = (
-        supabase.table("notify_targets")
+        supabase
+        .table("notify_targets")
         .select("*")
         .eq("guild_id", str(interaction.guild.id))
         .eq("owner_id", str(interaction.user.id))
         .eq("target_id", str(user.id))
         .execute()
     )
-    
+
     if not res.data:
-    
+
         await interaction.response.send_message(
             f"{user.mention} は登録されていません",
             ephemeral=True
         )
         return
-    
-    supabase.table(
-        "notify_targets"
-    ).delete()
-    .eq("guild_id", str(interaction.guild.id))
-    .eq("owner_id", str(interaction.user.id))
-    .eq("target_id", str(user.id))
-    .execute()
+
+    (
+        supabase
+        .table("notify_targets")
+        .delete()
+        .eq("guild_id", str(interaction.guild.id))
+        .eq("owner_id", str(interaction.user.id))
+        .eq("target_id", str(user.id))
+        .execute()
+    )
 
     await interaction.response.send_message(
         f"{user.mention} を通知対象から削除しました",
