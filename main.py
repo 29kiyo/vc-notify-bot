@@ -8,6 +8,8 @@ import json
 import os
 import time
 
+print("VERSION TEST 999")
+
 # =========================
 # TOKEN
 # =========================
