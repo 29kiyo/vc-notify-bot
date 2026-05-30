@@ -354,25 +354,40 @@ async def notifylist(interaction: discord.Interaction):
 
     targets = data["targets"]
 
-    if not targets:
-
-        await interaction.response.send_message(
-            "通知対象はありません",
-            ephemeral=True
-        )
-        return
-
-    text = []
+    users = []
 
     for uid in targets:
 
         user = interaction.guild.get_member(uid)
 
         if user:
-            text.append(user.mention)
+            users.append(user.display_name)
+
+    if not users:
+
+        await interaction.response.send_message(
+            "```text\n┌─ 通知対象一覧 (0人) ─┐\n└──────────────────────┘\n```",
+            ephemeral=True
+        )
+        return
+
+    width = max(len(name) for name in users) + 8
+
+    lines = [
+        f"│ {i+1}. {name}".ljust(width) + "│"
+        for i, name in enumerate(users)
+    ]
+
+    msg = (
+        "```text\n"
+        f"┌─ 通知対象一覧 ({len(users)}人) ─┐\n"
+        + "\n".join(lines)
+        + "\n└" + "─" * (width - 1) + "┘\n"
+        "```"
+    )
 
     await interaction.response.send_message(
-        "通知対象一覧:\n" + "\n".join(text),
+        msg,
         ephemeral=True
     )
 
@@ -454,25 +469,40 @@ async def listenerlist(interaction: discord.Interaction):
 
     listeners = data["listeners"]
 
-    if not listeners:
-
-        await interaction.response.send_message(
-            "通知先はありません",
-            ephemeral=True
-        )
-        return
-
-    text = []
+    users = []
 
     for uid in listeners:
 
         user = interaction.guild.get_member(uid)
 
         if user:
-            text.append(user.mention)
+            users.append(user.display_name)
+
+    if not users:
+
+        await interaction.response.send_message(
+            "```text\n┌─ 通知先一覧 (0人) ─┐\n└──────────────────┘\n```",
+            ephemeral=True
+        )
+        return
+
+    width = max(len(name) for name in users) + 8
+
+    lines = [
+        f"│ {i+1}. {name}".ljust(width) + "│"
+        for i, name in enumerate(users)
+    ]
+
+    msg = (
+        "```text\n"
+        f"┌─ 通知先一覧 ({len(users)}人) ─┐\n"
+        + "\n".join(lines)
+        + "\n└" + "─" * (width - 1) + "┘\n"
+        "```"
+    )
 
     await interaction.response.send_message(
-        "通知先一覧:\n" + "\n".join(text),
+        msg,
         ephemeral=True
     )
 
