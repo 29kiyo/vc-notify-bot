@@ -114,6 +114,7 @@ COOLDOWN = 10
 
 @bot.event
 async def on_voice_state_update(member, before, after):
+    print("VOICE EVENT FIRED", flush=True)
 
     print("======== VC EVENT ========")
     print(member)
@@ -775,16 +776,16 @@ async def setchannel(interaction: discord.Interaction):
 
 @bot.event
 async def on_ready():
+    try:
+        print("READY ENTERED", flush=True)
 
-    print("##########")
-    print("ON READY")
-    print("##########")
+        synced = await bot.tree.sync()
 
-    synced = await bot.tree.sync()
+        print(f"SYNCED={len(synced)}", flush=True)
+        print(f"USER={bot.user}", flush=True)
 
-    print(f"{len(synced)} commands synced")
-    print(f"ログイン: {bot.user}")
-
+    except Exception as e:
+        print("ON_READY_ERROR:", repr(e), flush=True)
 # =========================
 # 起動
 # =========================
