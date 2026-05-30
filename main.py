@@ -193,39 +193,30 @@ async def on_voice_state_update(member, before, after):
         if m.voice and m.voice.channel == vc:
             continue
     
-        # 通知OFF
-        settings = get_user_data(
+        # 相手が通知OFFなら送らない
+        target_settings = get_user_data(
             guild.id,
             m.id
         )
     
-        if not settings["enabled"]:
+        if not target_settings["enabled"]:
             continue
     
-        # ===== memberが全員通知 =====
+        # ===== 全員通知 =====
         if member_settings["mode"] == "all":
     
-            if m.mention not in mention_targets:
-                mention_targets.append(m.mention)
+            mention_targets.append(m.mention)
     
-        # ===== memberが選択通知 =====
+        # ===== 選択通知 =====
         elif member_settings["mode"] == "selected":
     
-            allow = False
+            if (
+                m.id in member_settings["targets"]
+                or
+                m.id in member_settings["listeners"]
+            ):
     
-            # notify-add
-            if m.id in member_settings["targets"]:
-                allow = True
-    
-            # listener-add
-            if m.id in member_settings["listeners"]:
-                allow = True
-    
-            if allow:
-    
-                if m.mention not in mention_targets:
-                    mention_targets.append(m.mention)
-
+                mention_targets.append(m.mention)
     
     # =========================
     # 対象なし
