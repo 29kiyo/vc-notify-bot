@@ -506,6 +506,14 @@ async def addnotify(
         )
         return
 
+    if user.id == interaction.user.id:
+
+        await interaction.response.send_message(
+            "自分は追加できません",
+            ephemeral=True
+        )
+        return
+
     data = get_user_data(
         interaction.guild.id,
         interaction.user.id
@@ -643,6 +651,14 @@ async def addlistener(
 
         await interaction.response.send_message(
             "Botは追加できません",
+            ephemeral=True
+        )
+        return
+
+    if user.id == interaction.user.id:
+
+        await interaction.response.send_message(
+            "自分は追加できません",
             ephemeral=True
         )
         return
