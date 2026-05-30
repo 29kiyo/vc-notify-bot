@@ -518,9 +518,10 @@ async def setchannel(interaction: discord.Interaction):
 @bot.event
 async def on_ready():
 
-    await bot.tree.sync()
+    synced = await bot.tree.sync()
 
     print("------------------")
+    print(f"{len(synced)} commands synced")
     print(f"ログイン: {bot.user}")
     print("Bot起動完了")
     print("------------------")
