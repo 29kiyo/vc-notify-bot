@@ -219,31 +219,27 @@ async def on_voice_state_update(member, before, after):
     description="通知ON/OFF"
 )
 @app_commands.describe(
-    mode="on または off"
+    mode="通知設定"
+)
+@app_commands.choices(
+    mode=[
+        app_commands.Choice(name="ON", value="on"),
+        app_commands.Choice(name="OFF", value="off")
+    ]
 )
 async def notify(
     interaction: discord.Interaction,
-    mode: str
+    mode: app_commands.Choice[str]
 ):
-
-    mode = mode.lower()
-
-    if mode not in ["on", "off"]:
-
-        await interaction.response.send_message(
-            "on または off を指定してください",
-            ephemeral=True
-        )
-        return
 
     data = get_user_data(interaction.user.id)
 
-    data["enabled"] = (mode == "on")
+    data["enabled"] = (mode.value == "on")
 
     save_json(SETTINGS_FILE, notify_settings)
 
     await interaction.response.send_message(
-        f"通知設定を {mode} にしました",
+        f"通知設定を {mode.value} にしました",
         ephemeral=True
     )
 
@@ -256,31 +252,27 @@ async def notify(
     description="通知モード変更"
 )
 @app_commands.describe(
-    mode="all または selected"
+    mode="通知モード"
 )
-async def notifymode(
+@app_commands.choices(
+    mode=[
+        app_commands.Choice(name="全員通知", value="all"),
+        app_commands.Choice(name="選択通知", value="selected")
+    ]
+)
+async def notify_mode(
     interaction: discord.Interaction,
-    mode: str
+    mode: app_commands.Choice[str]
 ):
-
-    mode = mode.lower()
-
-    if mode not in ["all", "selected"]:
-
-        await interaction.response.send_message(
-            "all または selected を指定してください",
-            ephemeral=True
-        )
-        return
 
     data = get_user_data(interaction.user.id)
 
-    data["mode"] = mode
+    data["mode"] = mode.value
 
     save_json(SETTINGS_FILE, notify_settings)
 
     await interaction.response.send_message(
-        f"通知モードを {mode} にしました",
+        f"通知モードを {mode.name} にしました",
         ephemeral=True
     )
 
