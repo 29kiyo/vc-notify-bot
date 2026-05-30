@@ -176,6 +176,12 @@ async def on_voice_state_update(member, before, after):
     # 通常通知
     # =========================
     
+    # 参加者(member)の設定
+    member_settings = get_user_data(
+        guild.id,
+        member.id
+    )
+    
     for m in guild.members:
     
         if m.bot:
@@ -187,6 +193,7 @@ async def on_voice_state_update(member, before, after):
         if m.voice and m.voice.channel == vc:
             continue
     
+        # 通知OFF
         settings = get_user_data(
             guild.id,
             m.id
@@ -195,27 +202,22 @@ async def on_voice_state_update(member, before, after):
         if not settings["enabled"]:
             continue
     
-        # 全員通知
-        if settings["mode"] == "all":
+        # ===== memberが全員通知 =====
+        if member_settings["mode"] == "all":
     
             if m.mention not in mention_targets:
                 mention_targets.append(m.mention)
     
-        # 選択通知
-        elif settings["mode"] == "selected":
+        # ===== memberが選択通知 =====
+        elif member_settings["mode"] == "selected":
     
             allow = False
     
             # notify-add
-            if member.id in settings["targets"]:
+            if m.id in member_settings["targets"]:
                 allow = True
     
             # listener-add
-            member_settings = get_user_data(
-                guild.id,
-                member.id
-            )
-    
             if m.id in member_settings["listeners"]:
                 allow = True
     
