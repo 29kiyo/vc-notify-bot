@@ -65,51 +65,101 @@ bot = commands.Bot(
 # ファイル
 # =========================
 
-SETTINGS_FILE = "notify_settings.json"
-CHANNELS_FILE = "channels.json"
+
 
 # =========================
-# JSON
+# Supabase DB
 # =========================
 
-def load_json(path):
+def load_user(guild_id, user_id):
 
-    if not os.path.exists(path):
-        return {}
+    res = supabase.table(
+        "user_settings"
+    ).select("*").eq(
+        "guild_id", str(guild_id)
+    ).eq(
+        "user_id", str(user_id)
+    ).execute()
 
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    if res.data:
+        return res.data[0]
 
-def save_json(path, data):
+    default = {
+        "guild_id": str(guild_id),
+        "user_id": str(user_id),
+        "enabled": True,
+        "mode": "all",
+        "targets": [],
+        "listeners": []
+    }
 
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+    supabase.table(
+        "user_settings"
+    ).insert(default).execute()
 
-notify_settings = load_json(SETTINGS_FILE)
-notify_channels = load_json(CHANNELS_FILE)
+    return default
 
+
+def save_user(data):
+
+    supabase.table(
+        "user_settings"
+    ).upsert(data).execute()
+
+
+def load_channel(guild_id):
+
+    res = supabase.table(
+        "guild_settings"
+    ).select("*").eq(
+        "guild_id", str(guild_id)
+    ).execute()
+
+    if not res.data:
+        return None
+
+    return res.data[0]["channel_id"]
+
+
+def save_channel(guild_id, channel_id):
+
+    supabase.table(
+        "guild_settings"
+    ).upsert({
+        "guild_id": str(guild_id),
+        "channel_id": channel_id
+    }).execute()
+    
 # =========================
 # ユーザーデータ
 # =========================
 
-def get_user_data(guild_id: int, user_id: int):
+def get_user_data(guild_id, user_id):
 
-    gid = str(guild_id)
-    uid = str(user_id)
+    res = (
+        supabase
+        .table("user_settings")
+        .select("*")
+        .eq("guild_id", str(guild_id))
+        .eq("user_id", str(user_id))
+        .execute()
+    )
 
-    if gid not in notify_settings:
-        notify_settings[gid] = {}
+    if res.data:
+        return res.data[0]
 
-    if uid not in notify_settings[gid]:
+    default = {
+        "guild_id": str(guild_id),
+        "user_id": str(user_id),
+        "enabled": True,
+        "mode": "all"
+    }
 
-        notify_settings[gid][uid] = {
-            "enabled": True,
-            "mode": "all",
-            "targets": [],
-            "listeners": []
-        }
+    supabase.table(
+        "user_settings"
+    ).insert(default).execute()
 
-    return notify_settings[gid][uid]
+    return default
 
 # =========================
 # クールダウン
@@ -163,14 +213,24 @@ async def on_voice_state_update(member, before, after):
     guild_id = str(guild.id)
 
     print(f"guild_id={guild_id}")
-
-    channel_id = notify_channels.get(guild_id)
-
-    print(f"channel_id={channel_id}")
-
-    if not channel_id:
+    
+    res = (
+        supabase
+        .table("guild_settings")
+        .select("*")
+        .eq("guild_id", guild_id)
+        .execute()
+    )
+    
+    if not res.data:
         print("通知チャンネル未設定")
         return
+    
+    channel_id = int(
+        res.data[0]["channel_id"]
+    )
+    
+    print(f"channel_id={channel_id}")
 
     send_channel = guild.get_channel(channel_id)
 
@@ -300,7 +360,9 @@ class NotifyRemoveSelect(discord.ui.Select):
         if uid in data["targets"]:
             data["targets"].remove(uid)
 
-        save_json(SETTINGS_FILE, notify_settings)
+        supabase.table(
+            "user_settings"
+        ).upsert(data).execute()
 
         users = []
 
@@ -377,7 +439,10 @@ class ListenerRemoveSelect(discord.ui.Select):
         if uid in data["listeners"]:
             data["listeners"].remove(uid)
 
-        save_json(SETTINGS_FILE, notify_settings)
+        supabase.table(
+            "user_settings"
+        ).upsert(data).execute()
+
 
         users = []
 
@@ -449,7 +514,10 @@ async def notify(
 
     data["enabled"] = (mode.value == "on")
 
-    save_json(SETTINGS_FILE, notify_settings)
+    supabase.table(
+            "user_settings"
+        ).upsert(data).execute()
+
 
     await interaction.response.send_message(
         f"通知設定を {mode.value} にしました",
@@ -485,7 +553,10 @@ async def notify_mode(
 
     data["mode"] = mode.value
 
-    save_json(SETTINGS_FILE, notify_settings)
+    supabase.table(
+            "user_settings"
+        ).upsert(data).execute()
+
 
     await interaction.response.send_message(
         f"通知モードを {mode.name} にしました",
@@ -539,7 +610,10 @@ async def addnotify(
     
     data["targets"].append(user.id)
 
-    save_json(SETTINGS_FILE, notify_settings)
+    supabase.table(
+            "user_settings"
+        ).upsert(data).execute()
+
 
     await interaction.response.send_message(
         f"{user.mention} を通知対象へ追加しました",
@@ -577,7 +651,9 @@ async def removenotify(
     
     data["targets"].remove(user.id)
 
-    save_json(SETTINGS_FILE, notify_settings)
+    supabase.table(
+            "user_settings"
+        ).upsert(data).execute()
 
     await interaction.response.send_message(
         f"{user.mention} を通知対象から削除しました",
@@ -688,7 +764,10 @@ async def addlistener(
     
     data["listeners"].append(user.id)
     
-    save_json(SETTINGS_FILE, notify_settings)
+    supabase.table(
+            "user_settings"
+        ).upsert(data).execute()
+
 
     await interaction.response.send_message(
         f"{user.mention} を通知先へ追加しました",
@@ -726,7 +805,10 @@ async def removelistener(
     
     data["listeners"].remove(user.id)
 
-    save_json(SETTINGS_FILE, notify_settings)
+    supabase.table(
+            "user_settings"
+        ).upsert(data).execute()
+
 
     await interaction.response.send_message(
         f"{user.mention} を通知先から削除しました",
@@ -844,9 +926,12 @@ async def setchannel(interaction: discord.Interaction):
 
     guild_id = str(interaction.guild.id)
 
-    notify_channels[guild_id] = interaction.channel.id
-
-    save_json(CHANNELS_FILE, notify_channels)
+    supabase.table(
+        "guild_settings"
+    ).upsert({
+        "guild_id": guild_id,
+        "channel_id": str(interaction.channel.id)
+    }).execute()
 
     await interaction.response.send_message(
         f"通知チャンネルを {interaction.channel.mention} に設定しました",
