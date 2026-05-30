@@ -363,34 +363,25 @@ async def notifylist(interaction: discord.Interaction):
         if user:
             users.append(user.display_name)
 
-    if not users:
-
-        await interaction.response.send_message(
-            "```text\n┌─ 通知対象一覧 (0人) ─┐\n└──────────────────────┘\n```",
-            ephemeral=True
-        )
-        return
-
-    width = max(len(name) for name in users) + 8
-
-    lines = [
-        f"│ {i+1}. {name}".ljust(width) + "│"
-        for i, name in enumerate(users)
-    ]
-
-    msg = (
-        "```text\n"
-        f"┌─ 通知対象一覧 ({len(users)}人) ─┐\n"
-        + "\n".join(lines)
-        + "\n└" + "─" * (width - 1) + "┘\n"
-        "```"
+    embed = discord.Embed(
+        title=f"📋 通知対象一覧 ({len(users)}人)"
     )
+
+    if users:
+
+        embed.description = "\n".join(
+            f"{i}. {name}"
+            for i, name in enumerate(users, start=1)
+        )
+
+    else:
+
+        embed.description = "登録されていません"
 
     await interaction.response.send_message(
-        msg,
+        embed=embed,
         ephemeral=True
     )
-
 # =========================
 # /listener-add
 # =========================
@@ -478,31 +469,23 @@ async def listenerlist(interaction: discord.Interaction):
         if user:
             users.append(user.display_name)
 
-    if not users:
-
-        await interaction.response.send_message(
-            "```text\n┌─ 通知先一覧 (0人) ─┐\n└──────────────────┘\n```",
-            ephemeral=True
-        )
-        return
-
-    width = max(len(name) for name in users) + 8
-
-    lines = [
-        f"│ {i+1}. {name}".ljust(width) + "│"
-        for i, name in enumerate(users)
-    ]
-
-    msg = (
-        "```text\n"
-        f"┌─ 通知先一覧 ({len(users)}人) ─┐\n"
-        + "\n".join(lines)
-        + "\n└" + "─" * (width - 1) + "┘\n"
-        "```"
+    embed = discord.Embed(
+        title=f"📋 通知先一覧 ({len(users)}人)"
     )
 
+    if users:
+
+        embed.description = "\n".join(
+            f"{i}. {name}"
+            for i, name in enumerate(users, start=1)
+        )
+
+    else:
+
+        embed.description = "登録されていません"
+
     await interaction.response.send_message(
-        msg,
+        embed=embed,
         ephemeral=True
     )
 
