@@ -224,31 +224,7 @@ for m in guild.members:
             if m.mention not in mention_targets:
                 mention_targets.append(m.mention)
 
-    # =========================
-    # listener通知
-    # =========================
-
-    member_settings = get_user_data(
-        guild.id,
-        member.id
-    )
-
-    for uid in member_settings["listeners"]:
-
-        target = guild.get_member(uid)
-
-        if not target:
-            continue
-
-        if target.bot:
-            continue
-
-        if target.voice and target.voice.channel == vc:
-            continue
-
-        if target.mention not in mention_targets:
-            mention_targets.append(target.mention)
-
+    
     # =========================
     # 対象なし
     # =========================
