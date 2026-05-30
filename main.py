@@ -173,71 +173,71 @@ async def on_voice_state_update(member, before, after):
     mention_targets = []
 
     # =========================
-# 通常通知
-# =========================
-
-for m in guild.members:
-
-    if m.bot:
-        continue
-
-    if m.id == member.id:
-        continue
-
-    if m.voice and m.voice.channel == vc:
-        continue
-
-    settings = get_user_data(
-        guild.id,
-        m.id
-    )
-
-    if not settings["enabled"]:
-        continue
-
-    # 全員通知
-    if settings["mode"] == "all":
-
-        if m.mention not in mention_targets:
-            mention_targets.append(m.mention)
-
-    # 選択通知
-    elif settings["mode"] == "selected":
-
-        allow = False
-
-        # notify-add
-        if member.id in settings["targets"]:
-            allow = True
-
-        # listener-add
-        member_settings = get_user_data(
+    # 通常通知
+    # =========================
+    
+    for m in guild.members:
+    
+        if m.bot:
+            continue
+    
+        if m.id == member.id:
+            continue
+    
+        if m.voice and m.voice.channel == vc:
+            continue
+    
+        settings = get_user_data(
             guild.id,
-            member.id
+            m.id
         )
-
-        if m.id in member_settings["listeners"]:
-            allow = True
-
-        if allow:
-
+    
+        if not settings["enabled"]:
+            continue
+    
+        # 全員通知
+        if settings["mode"] == "all":
+    
             if m.mention not in mention_targets:
                 mention_targets.append(m.mention)
+    
+        # 選択通知
+        elif settings["mode"] == "selected":
+    
+            allow = False
+    
+            # notify-add
+            if member.id in settings["targets"]:
+                allow = True
+    
+            # listener-add
+            member_settings = get_user_data(
+                guild.id,
+                member.id
+            )
+    
+            if m.id in member_settings["listeners"]:
+                allow = True
+    
+            if allow:
+    
+                if m.mention not in mention_targets:
+                    mention_targets.append(m.mention)
 
     
     # =========================
     # 対象なし
     # =========================
-
+    
     if not mention_targets:
         return
-
+    
     text = (
         f"{member.display_name} が "
         f"🎤 {vc.name} に参加しました！\n"
         + " ".join(mention_targets)
     )
-
+    
     print("送信対象:", mention_targets)
     print(text)
     
