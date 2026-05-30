@@ -302,8 +302,15 @@ async def addnotify(
 
     data = get_user_data(interaction.user.id)
 
-    if user.id not in data["targets"]:
-        data["targets"].append(user.id)
+    if user.id in data["targets"]:
+
+        await interaction.response.send_message(
+            f"{user.mention} は既に登録されています",
+            ephemeral=True
+        )
+        return
+    
+    data["targets"].append(user.id)
 
     save_json(SETTINGS_FILE, notify_settings)
 
@@ -330,8 +337,15 @@ async def removenotify(
 
     data = get_user_data(interaction.user.id)
 
-    if user.id in data["targets"]:
-        data["targets"].remove(user.id)
+    if user.id not in data["targets"]:
+
+        await interaction.response.send_message(
+            f"{user.mention} は登録されていません",
+            ephemeral=True
+        )
+        return
+    
+    data["targets"].remove(user.id)
 
     save_json(SETTINGS_FILE, notify_settings)
 
@@ -408,9 +422,16 @@ async def addlistener(
 
     data = get_user_data(interaction.user.id)
 
-    if user.id not in data["listeners"]:
-        data["listeners"].append(user.id)
+    if user.id in data["listeners"]:
 
+        await interaction.response.send_message(
+            f"{user.mention} は既に登録されています",
+            ephemeral=True
+        )
+        return
+    
+    data["listeners"].append(user.id)
+    
     save_json(SETTINGS_FILE, notify_settings)
 
     await interaction.response.send_message(
@@ -436,8 +457,15 @@ async def removelistener(
 
     data = get_user_data(interaction.user.id)
 
-    if user.id in data["listeners"]:
-        data["listeners"].remove(user.id)
+    if user.id not in data["listeners"]:
+
+        await interaction.response.send_message(
+            f"{user.mention} は登録されていません",
+            ephemeral=True
+        )
+        return
+    
+    data["listeners"].remove(user.id)
 
     save_json(SETTINGS_FILE, notify_settings)
 
@@ -489,6 +517,41 @@ async def listenerlist(interaction: discord.Interaction):
         ephemeral=True
     )
 
+# =========================
+# /help
+# =========================
+
+@bot.tree.command(
+    name="help",
+    description="コマンド一覧"
+)
+async def help_command(interaction: discord.Interaction):
+
+    embed = discord.Embed(
+        title="📖 VC Notify Bot コマンド一覧"
+    )
+
+    embed.description = (
+        "**通知設定**\n"
+        "/notify → 通知ON/OFF\n"
+        "/notify-mode → 通知モード変更\n"
+        "/notify-add → 自分に通知する相手を追加\n"
+        "/notify-remove → 通知対象削除\n"
+        "/notify-list → 通知対象一覧\n\n"
+
+        "**通知先設定**\n"
+        "/listener-add → 自分が参加した時の通知先追加\n"
+        "/listener-remove → 通知先削除\n"
+        "/listener-list → 通知先一覧\n\n"
+
+        "**管理者**\n"
+        "/admin-setchannel → 通知チャンネル設定"
+    )
+
+    await interaction.response.send_message(
+        embed=embed,
+        ephemeral=True
+    )
 
 # =========================
 # /admin-setchannel
