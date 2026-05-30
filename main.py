@@ -111,20 +111,28 @@ COOLDOWN = 300
 @bot.event
 async def on_voice_state_update(member, before, after):
 
+    print(f"VCイベント: {member} | {before.channel} -> {after.channel}")
+
     if member.bot:
+        print("Botなので無視")
         return
 
     if before.channel == after.channel:
+        print("同じVCなので無視")
         return
 
     if after.channel is None:
+        print("退出なので無視")
         return
+
+    print("VC参加検知")
 
     now = time.time()
 
     last_time = last_notify.get(member.id, 0)
 
     if now - last_time < COOLDOWN:
+        print("クールダウン中")
         return
 
     last_notify[member.id] = now
@@ -134,14 +142,22 @@ async def on_voice_state_update(member, before, after):
 
     guild_id = str(guild.id)
 
+    print(f"guild_id={guild_id}")
+
     channel_id = notify_channels.get(guild_id)
 
+    print(f"channel_id={channel_id}")
+
     if not channel_id:
+        print("通知チャンネル未設定")
         return
 
     send_channel = guild.get_channel(channel_id)
 
+    print(f"send_channel={send_channel}")
+
     if send_channel is None:
+        print("チャンネル取得失敗")
         return
 
     mention_targets = []
@@ -218,6 +234,9 @@ async def on_voice_state_update(member, before, after):
         + " ".join(mention_targets)
     )
 
+    print("送信対象:", mention_targets)
+    print(text)
+    
     await send_channel.send(text)
 # ============================
 # list remove
