@@ -5,7 +5,6 @@ from discord.app_commands import checks
 from flask import Flask
 from supabase import create_client
 from threading import Thread
-import json
 import os
 import time
 
@@ -257,16 +256,9 @@ async def on_voice_state_update(member, before, after):
         if m.voice and m.voice.channel == vc:
             continue
     
-        # 受信側(A)
         receiver = get_user_data(
             guild.id,
             m.id
-        )
-    
-        # 送信側(B)
-        sender = get_user_data(
-            guild.id,
-            member.id
         )
     
         if not receiver["enabled"]:
@@ -274,29 +266,64 @@ async def on_voice_state_update(member, before, after):
     
         allow = False
     
-        # receiver = all
+        # ---------- sender設定 ----------
+        sender_res = (
+            supabase.table("user_settings")
+            .select("*")
+            .eq("guild_id", str(guild.id))
+            .eq("user_id", str(member.id))
+            .execute()
+        )
+    
+        sender_mode = "all"
+    
+        if sender_res.data:
+            sender_mode = sender_res.data[0]["mode"]
+    
+        # ---------- notify-add ----------
+        notify_res = (
+            supabase.table("notify_targets")
+            .select("*")
+            .eq("guild_id", str(guild.id))
+            .eq("owner_id", str(member.id))
+            .eq("target_id", str(m.id))
+            .execute()
+        )
+    
+        sender_notify = bool(notify_res.data)
+    
+        # ---------- listener-add ----------
+        listener_res = (
+            supabase.table("listeners")
+            .select("*")
+            .eq("guild_id", str(guild.id))
+            .eq("owner_id", str(m.id))
+            .eq("listener_id", str(member.id))
+            .execute()
+        )
+    
+        receiver_listener = bool(listener_res.data)
+    
+        # ===== receiver = all =====
+    
         if receiver["mode"] == "all":
     
             if (
-                sender["mode"] == "all"
-                or
-                m.id in sender["targets"]
-                or
-                member.id in receiver["listeners"]
+                sender_mode == "all"
+                or sender_notify
+                or receiver_listener
             ):
                 allow = True
     
-        # receiver = selected
+        # ===== receiver = selected =====
+    
         elif receiver["mode"] == "selected":
     
-            receiver_ok = (
-                member.id in receiver["listeners"]
-            )
+            receiver_ok = receiver_listener
     
             sender_ok = (
-                sender["mode"] == "all"
-                or
-                m.id in sender["targets"]
+                sender_mode == "all"
+                or sender_notify
             )
     
             if receiver_ok and sender_ok:
@@ -595,25 +622,30 @@ async def addnotify(
         )
         return
 
-    data = get_user_data(
-        interaction.guild.id,
-        interaction.user.id
+    res = (
+        supabase.table("notify_targets")
+        .select("*")
+        .eq("guild_id", str(interaction.guild.id))
+        .eq("owner_id", str(interaction.user.id))
+        .eq("target_id", str(user.id))
+        .execute()
     )
-
-    if user.id in data["targets"]:
-
+    
+    if res.data:
+    
         await interaction.response.send_message(
             f"{user.mention} は既に登録されています",
             ephemeral=True
         )
         return
     
-    data["targets"].append(user.id)
-
     supabase.table(
-            "user_settings"
-        ).upsert(data).execute()
-
+        "notify_targets"
+    ).insert({
+        "guild_id": str(interaction.guild.id),
+        "owner_id": str(interaction.user.id),
+        "target_id": str(user.id)
+    }).execute()
 
     await interaction.response.send_message(
         f"{user.mention} を通知対象へ追加しました",
@@ -636,24 +668,30 @@ async def removenotify(
     user: discord.Member
 ):
 
-    data = get_user_data(
-        interaction.guild.id,
-        interaction.user.id
+    res = (
+        supabase.table("notify_targets")
+        .select("*")
+        .eq("guild_id", str(interaction.guild.id))
+        .eq("owner_id", str(interaction.user.id))
+        .eq("target_id", str(user.id))
+        .execute()
     )
-
-    if user.id not in data["targets"]:
-
+    
+    if not res.data:
+    
         await interaction.response.send_message(
             f"{user.mention} は登録されていません",
             ephemeral=True
         )
         return
     
-    data["targets"].remove(user.id)
-
     supabase.table(
-            "user_settings"
-        ).upsert(data).execute()
+        "notify_targets"
+    ).delete()
+    .eq("guild_id", str(interaction.guild.id))
+    .eq("owner_id", str(interaction.user.id))
+    .eq("target_id", str(user.id))
+    .execute()
 
     await interaction.response.send_message(
         f"{user.mention} を通知対象から削除しました",
@@ -670,20 +708,23 @@ async def removenotify(
 )
 async def notifylist(interaction: discord.Interaction):
 
-    data = get_user_data(
-        interaction.guild.id,
-        interaction.user.id
+    res = (
+        supabase.table("notify_targets")
+        .select("*")
+        .eq("guild_id", str(interaction.guild.id))
+        .eq("owner_id", str(interaction.user.id))
+        .execute()
     )
-
-    targets = data["targets"]
-
+    
     users = []
     users_obj = []
-
-    for uid in targets:
-
+    
+    for row in res.data:
+    
+        uid = int(row["target_id"])
+    
         user = interaction.guild.get_member(uid)
-
+    
         if user:
             users.append(user.display_name)
             users_obj.append(user)
@@ -749,24 +790,30 @@ async def addlistener(
         )
         return
 
-    data = get_user_data(
-        interaction.guild.id,
-        interaction.user.id
+    res = (
+        supabase.table("listeners")
+        .select("*")
+        .eq("guild_id", str(interaction.guild.id))
+        .eq("owner_id", str(interaction.user.id))
+        .eq("listener_id", str(user.id))
+        .execute()
     )
-
-    if user.id in data["listeners"]:
-
+    
+    if res.data:
+    
         await interaction.response.send_message(
             f"{user.mention} は既に登録されています",
             ephemeral=True
         )
         return
     
-    data["listeners"].append(user.id)
-    
     supabase.table(
-            "user_settings"
-        ).upsert(data).execute()
+        "listeners"
+    ).insert({
+        "guild_id": str(interaction.guild.id),
+        "owner_id": str(interaction.user.id),
+        "listener_id": str(user.id)
+    }).execute()
 
 
     await interaction.response.send_message(
@@ -790,24 +837,30 @@ async def removelistener(
     user: discord.Member
 ):
 
-    data = get_user_data(
-        interaction.guild.id,
-        interaction.user.id
+    res = (
+        supabase.table("listeners")
+        .select("*")
+        .eq("guild_id", str(interaction.guild.id))
+        .eq("owner_id", str(interaction.user.id))
+        .eq("listener_id", str(user.id))
+        .execute()
     )
-
-    if user.id not in data["listeners"]:
-
+    
+    if not res.data:
+    
         await interaction.response.send_message(
             f"{user.mention} は登録されていません",
             ephemeral=True
         )
         return
     
-    data["listeners"].remove(user.id)
-
     supabase.table(
-            "user_settings"
-        ).upsert(data).execute()
+        "listeners"
+    ).delete()
+    .eq("guild_id", str(interaction.guild.id))
+    .eq("owner_id", str(interaction.user.id))
+    .eq("listener_id", str(user.id))
+    .execute()
 
 
     await interaction.response.send_message(
@@ -825,20 +878,23 @@ async def removelistener(
 )
 async def listenerlist(interaction: discord.Interaction):
 
-    data = get_user_data(
-        interaction.guild.id,
-        interaction.user.id
+    res = (
+        supabase.table("listeners")
+        .select("*")
+        .eq("guild_id", str(interaction.guild.id))
+        .eq("owner_id", str(interaction.user.id))
+        .execute()
     )
-
-    listeners = data["listeners"]
-
+    
     users = []
     users_obj = []
-
-    for uid in listeners:
-
+    
+    for row in res.data:
+    
+        uid = int(row["listener_id"])
+    
         user = interaction.guild.get_member(uid)
-
+    
         if user:
             users.append(user.display_name)
             users_obj.append(user)
