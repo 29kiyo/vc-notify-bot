@@ -8,13 +8,15 @@ import json
 import os
 import time
 
-print("VERSION TEST 999")
+
 
 # =========================
 # TOKEN
 # =========================
 
 TOKEN = os.getenv("TOKEN")
+
+print("VERSION TEST 999")
 
 # =========================
 # Flask (Render用)
