@@ -16,7 +16,7 @@ import time
 
 TOKEN = os.getenv("TOKEN")
 
-print("VERSION TEST 989")
+print("VERSION TEST 988")
 
 # =========================
 # Flask (Render用)
