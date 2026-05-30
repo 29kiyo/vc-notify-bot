@@ -745,6 +745,11 @@ async def help_command(interaction: discord.Interaction):
         "/listener-remove → 通知先削除\n"
         "/listener-list → 通知先一覧\n\n"
 
+        "**通知条件**\n"
+        "通知は『受信許可』と『送信許可』の両方が必要\n"
+        "受信許可: ALL または /listener-add\n"
+        "送信許可: ALL または /notify-add\n\n"
+
         "**管理者**\n"
         "/admin-setchannel → 通知チャンネル設定"
     )
