@@ -292,11 +292,34 @@ class NotifyRemoveSelect(discord.ui.Select):
 
         save_json(SETTINGS_FILE, notify_settings)
 
-        user = interaction.guild.get_member(uid)
+        users = []
 
-        await interaction.response.send_message(
-            f"{user.mention} を通知対象から削除しました",
-            ephemeral=True
+        for target_id in data["targets"]:
+        
+            target = interaction.guild.get_member(target_id)
+        
+            if target:
+                users.append(target)
+        
+        embed = discord.Embed(
+            title=f"📋 通知対象一覧 ({len(users)}人)"
+        )
+        
+        embed.description = (
+            "\n".join(
+                f"{i}. {u.display_name}"
+                for i, u in enumerate(users, start=1)
+            )
+            if users
+            else "登録されていません"
+        )
+        
+        await interaction.response.edit_message(
+            embed=embed,
+            view=NotifyRemoveView(
+                self.owner_id,
+                users
+            ) if users else None
         )
 
 
@@ -346,11 +369,34 @@ class ListenerRemoveSelect(discord.ui.Select):
 
         save_json(SETTINGS_FILE, notify_settings)
 
-        user = interaction.guild.get_member(uid)
+        users = []
 
-        await interaction.response.send_message(
-            f"{user.mention} を通知先から削除しました",
-            ephemeral=True
+        for target_id in data["listeners"]:
+        
+            target = interaction.guild.get_member(target_id)
+        
+            if target:
+                users.append(target)
+        
+        embed = discord.Embed(
+            title=f"📋 通知先一覧 ({len(users)}人)"
+        )
+        
+        embed.description = (
+            "\n".join(
+                f"{i}. {u.display_name}"
+                for i, u in enumerate(users, start=1)
+            )
+            if users
+            else "登録されていません"
+        )
+        
+        await interaction.response.edit_message(
+            embed=embed,
+            view=ListenerRemoveView(
+                self.owner_id,
+                users
+            ) if users else None
         )
 
 
