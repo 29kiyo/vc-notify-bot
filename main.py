@@ -779,6 +779,7 @@ async def on_ready():
     synced = await bot.tree.sync()
 
     print(f"{len(synced)} commands synced")
+    print(f"ログイン: {bot.user}")
 
 # =========================
 # 起動
