@@ -785,4 +785,5 @@ async def on_ready():
 # =========================
 
 keep_alive()
+print("MAIN START")
 bot.run(TOKEN)
