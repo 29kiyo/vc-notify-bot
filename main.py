@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 from discord.app_commands import checks
 from flask import Flask
+from supabase import create_client
 from threading import Thread
 import json
 import os
@@ -15,6 +16,15 @@ import time
 # =========================
 
 TOKEN = os.getenv("TOKEN")
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+from supabase import create_client
+supabase = create_client(
+    SUPABASE_URL,
+    SUPABASE_KEY
+)
 
 print("VERSION TEST 988")
 
