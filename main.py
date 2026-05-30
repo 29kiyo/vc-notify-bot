@@ -176,12 +176,6 @@ async def on_voice_state_update(member, before, after):
     # 通常通知
     # =========================
     
-    # 参加者(member)の設定
-    member_settings = get_user_data(
-        guild.id,
-        member.id
-    )
-    
     for m in guild.members:
     
         if m.bot:
@@ -193,29 +187,54 @@ async def on_voice_state_update(member, before, after):
         if m.voice and m.voice.channel == vc:
             continue
     
-        # 相手が通知OFFなら送らない
-        target_settings = get_user_data(
+        # 受信側(A)
+        receiver = get_user_data(
             guild.id,
             m.id
         )
     
-        if not target_settings["enabled"]:
+        # 送信側(B)
+        sender = get_user_data(
+            guild.id,
+            member.id
+        )
+    
+        if not receiver["enabled"]:
             continue
     
-        # ===== 全員通知 =====
-        if member_settings["mode"] == "all":
+        allow = False
     
-            mention_targets.append(m.mention)
-    
-        # ===== 選択通知 =====
-        elif member_settings["mode"] == "selected":
+        # receiver = all
+        if receiver["mode"] == "all":
     
             if (
-                m.id in member_settings["targets"]
+                sender["mode"] == "all"
                 or
-                m.id in member_settings["listeners"]
+                m.id in sender["targets"]
+                or
+                member.id in receiver["listeners"]
             ):
+                allow = True
     
+        # receiver = selected
+        elif receiver["mode"] == "selected":
+    
+            receiver_ok = (
+                member.id in receiver["listeners"]
+            )
+    
+            sender_ok = (
+                sender["mode"] == "all"
+                or
+                m.id in sender["targets"]
+            )
+    
+            if receiver_ok and sender_ok:
+                allow = True
+    
+        if allow:
+    
+            if m.mention not in mention_targets:
                 mention_targets.append(m.mention)
     
     # =========================
