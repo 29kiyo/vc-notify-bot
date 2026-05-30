@@ -111,6 +111,11 @@ COOLDOWN = 10
 @bot.event
 async def on_voice_state_update(member, before, after):
 
+    print("======== VC EVENT ========")
+    print(member)
+    print(before.channel)
+    print(after.channel)
+
     print(f"VCイベント: {member} | {before.channel} -> {after.channel}")
 
     if member.bot:
@@ -767,13 +772,13 @@ async def setchannel(interaction: discord.Interaction):
 @bot.event
 async def on_ready():
 
+    print("##########")
+    print("ON READY")
+    print("##########")
+
     synced = await bot.tree.sync()
 
-    print("------------------")
     print(f"{len(synced)} commands synced")
-    print(f"ログイン: {bot.user}")
-    print("Bot起動完了")
-    print("------------------")
 
 # =========================
 # 起動
