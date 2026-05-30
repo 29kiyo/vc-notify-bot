@@ -489,26 +489,6 @@ async def listenerlist(interaction: discord.Interaction):
         ephemeral=True
     )
 
-# =========================
-# /debug-members
-# =========================
-
-@bot.tree.command(
-    name="debug-members",
-    description="取得できるメンバー確認"
-)
-async def debug_members(interaction: discord.Interaction):
-
-    members = [
-        m.display_name
-        for m in interaction.guild.members
-    ]
-
-    await interaction.response.send_message(
-        f"取得人数: {len(members)}\n"
-        + "\n".join(members[:20]),
-        ephemeral=True
-    )
 
 # =========================
 # /admin-setchannel
