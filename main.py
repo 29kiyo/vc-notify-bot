@@ -248,8 +248,8 @@ async def on_voice_state_update(member, before, after):
     if guild_id not in active_sessions:
         active_sessions[guild_id] = set()
     
-    if guild_id not in notify_mode:
-        notify_mode[guild_id] = "strict"
+    if guild_id not in guild_notify_mode:
+        guild_notify_mode[guild_id] = "strict"
 
     print(f"guild_id={guild_id}")
     
@@ -282,7 +282,7 @@ async def on_voice_state_update(member, before, after):
     mention_targets = []
 
     session = active_sessions[guild_id]
-    mode = notify_mode[guild_id]
+    mode = guild_notify_mode[guild_id]
     
     # 既に通知済みなら処理しない
     
