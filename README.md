@@ -2,89 +2,99 @@
 
 Discord VC参加通知Bot
 
+VC参加時に条件に応じてメンション通知を送信します。
+
+---
+
 ## 使用技術
 
-### Backend
-
-* Python 3.14
-* discord.py
-* Flask (Render keepalive用)
-
-### Database
-
-* Supabase
+* **Python 3.14**
+* **discord.py** (Slash Commands / VCイベント監視)
+* **Flask** (Render health check)
+* **Supabase**
 
   * PostgreSQL
-  * user_settings
-  * guild_settings
-  * listeners
-  * notify_targets
-
-### Hosting
-
-* Render
-
-  * Discord Bot本体ホスティング
-
-### Keep Alive / Anti Sleep
-
-* Supabase Edge Functions
-* UptimeRobot (5分監視)
-
-7日間アクセス無し停止対策。
+  * RLS
+  * Edge Functions
+* **Render** (Botホスティング)
+* **UptimeRobot** (定期Ping / スリープ対策)
 
 ---
 
-## 主な機能
+## システム構成
 
-### ユーザー設定
-
-* `/notify`
-  通知 ON / OFF
-
-* `/notify-mode`
-  all / selected
-
-* `/notify-add`
-  通知対象追加
-
-* `/notify-remove`
-  通知対象削除
-
-* `/listener-add`
-  通知先追加
-
-* `/listener-remove`
-  通知先削除
-
----
-
-### 管理者設定
-
-* `/admin-setchannel`
-  通知チャンネル設定
-
-* `/admin-notifymode`
-  strict / once
-
-* `/admin-defaultnotify` (予定)
-  新規ユーザー通知初期値設定
+```txt
+Discord
+ ↓
+Render (Python Bot)
+ ├─ discord.py
+ ├─ VC参加監視
+ └─ 通知判定
+ ↓
+Supabase
+ ├─ user_settings
+ ├─ guild_settings
+ ├─ notify_targets
+ └─ listeners
+ ↓
+Edge Function (/ping)
+ ↓
+UptimeRobot
+```
 
 ---
 
 ## 通知仕様
 
-### strict (デフォルト)
+通知には **受信許可 + 送信許可** の両方が必要。
+
+### 受信許可
+
+* notify mode = `all`
+* または `/listener-add`
+
+### 送信許可
+
+* notify mode = `all`
+* または `/notify-add`
+
+### 通知セッションモード
+
+**strict (デフォルト)**
 
 一度通知されたユーザーは、
+VC参加者が全員退出するまで再通知されません。
 
-**VC参加者が全員退出するまで再通知されない。**
+**once**
 
-### once
+通知済みユーザーのみ再通知を防止。
+未通知ユーザーは途中参加時でも通知対象になります。
 
-通知済みユーザーのみ除外。
+---
 
-新規対象ユーザーは途中参加でも通知される。
+## コマンド一覧
+
+### ユーザー設定
+
+| コマンド               | 説明        |
+| ------------------ | --------- |
+| `/notify`          | 通知 ON/OFF |
+| `/notify-mode`     | 通知モード変更   |
+| `/notify-add`      | 通知対象追加    |
+| `/notify-remove`   | 通知対象削除    |
+| `/notify-list`     | 通知対象一覧    |
+| `/listener-add`    | 通知先追加     |
+| `/listener-remove` | 通知先削除     |
+| `/listener-list`   | 通知先一覧     |
+| `/help`            | コマンド一覧表示  |
+
+### 管理者設定
+
+| コマンド                   | 説明               |
+| ---------------------- | ---------------- |
+| `/admin-setchannel`    | 通知チャンネル設定        |
+| `/admin-notifymode`    | strict / once 切替 |
+| `/admin-defaultnotify` | 新規ユーザー通知初期値変更    |
 
 ---
 
@@ -94,31 +104,4 @@ Discord VC参加通知Bot
 TOKEN=
 SUPABASE_URL=
 SUPABASE_KEY=
-```
-
----
-
-## Deploy
-
-### Render
-
-Start Command
-
-```bash
-python main.py
-```
-
-### Supabase
-
-必要機能:
-
-* Database
-* Edge Functions
-
-### UptimeRobot
-
-監視URL:
-
-```txt
-/functions/v1/ping
 ```
