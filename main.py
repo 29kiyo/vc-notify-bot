@@ -169,6 +169,8 @@ def get_user_data(guild_id, user_id):
 last_notify = {}
 COOLDOWN = 10
 
+guild_notify_mode = {}
+
 # =========================
 # VC通知セッション管理
 # =========================
@@ -176,7 +178,7 @@ COOLDOWN = 10
 active_sessions = {}
 # { guild_id : set(user_id) }
 
-notify_mode = {}
+guild_notify_mode = {}
 # once = 新規参加者だけ通知
 # strict = セッション中は誰も通知しない
 
@@ -1114,7 +1116,7 @@ async def admin_notifymode(
 
     guild_id = str(interaction.guild.id)
 
-    notify_mode[guild_id] = mode.value
+    guild_notify_mode[guild_id] = mode.value
 
     await interaction.response.send_message(
         f"通知モード: {mode.value}",
