@@ -131,7 +131,35 @@ def save_channel(guild_id, channel_id):
         "guild_id": str(guild_id),
         "channel_id": channel_id
     }).execute()
-    
+
+# =========================
+# デフォルト読み込み
+# =========================
+
+def load_guild_defaults():
+
+    res = (
+        supabase.table(
+            "guild_settings"
+        )
+        .select("*")
+        .execute()
+    )
+
+    for row in res.data:
+
+        gid = row["guild_id"]
+
+        default_notify[gid] = row.get(
+            "default_notify",
+            True
+        )
+
+        guild_notify_mode[gid] = row.get(
+            "notify_mode",
+            "strict"
+        )
+        
 # =========================
 # ユーザーデータ
 # =========================
@@ -150,10 +178,15 @@ def get_user_data(guild_id, user_id):
     if res.data:
         return res.data[0]
 
+    default_enabled = default_notify.get(
+        str(guild_id),
+        True
+    )
+    
     default = {
         "guild_id": str(guild_id),
         "user_id": str(user_id),
-        "enabled": True,
+        "enabled": default_enabled,
         "mode": "all"
     }
 
@@ -1061,6 +1094,61 @@ async def help_command(interaction: discord.Interaction):
     )
 
 # =========================
+# /setting-reset
+# =========================
+
+@bot.tree.command(
+    name="setting-reset",
+    description="自分の設定を初期化"
+)
+async def setting_reset(
+    interaction: discord.Interaction
+):
+
+    guild_id = str(
+        interaction.guild.id
+    )
+
+    user_id = str(
+        interaction.user.id
+    )
+
+    # user_settings削除
+    (
+        supabase
+        .table("user_settings")
+        .delete()
+        .eq("guild_id", guild_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+
+    # 自分の notify-add 削除
+    (
+        supabase
+        .table("notify_targets")
+        .delete()
+        .eq("guild_id", guild_id)
+        .eq("owner_id", user_id)
+        .execute()
+    )
+
+    # 自分の listener-add 削除
+    (
+        supabase
+        .table("listeners")
+        .delete()
+        .eq("guild_id", guild_id)
+        .eq("owner_id", user_id)
+        .execute()
+    )
+
+    await interaction.response.send_message(
+        "自分の設定を初期化しました",
+        ephemeral=True
+    )
+
+# =========================
 # /admin-setchannel
 # =========================
 
@@ -1091,24 +1179,16 @@ async def setchannel(interaction: discord.Interaction):
 
 @bot.tree.command(
     name="admin-defaultnotify",
-    description="通知初期値変更"
+    description="デフォルト通知設定変更"
 )
-@checks.has_permissions(
-    administrator=True
-)
+@checks.has_permissions(administrator=True)
 @app_commands.describe(
-    mode="初期設定"
+    mode="on / off"
 )
 @app_commands.choices(
     mode=[
-        app_commands.Choice(
-            name="ON",
-            value="on"
-        ),
-        app_commands.Choice(
-            name="OFF",
-            value="off"
-        )
+        app_commands.Choice(name="ON",value="on"),
+        app_commands.Choice(name="OFF",value="off")
     ]
 )
 async def admin_defaultnotify(
@@ -1116,16 +1196,32 @@ async def admin_defaultnotify(
     mode: app_commands.Choice[str]
 ):
 
-    guild_id = str(
-        interaction.guild.id
-    )
+    guild_id = str(interaction.guild.id)
 
     default_notify[guild_id] = (
-        mode.value == "on"
+        mode.value=="on"
     )
+    
+    supabase.table(
+        "guild_settings"
+    ).upsert({
+        "guild_id": guild_id,
+        "default_notify": (
+            mode.value=="on"
+        )
+    }).execute()
+    
+    value=(mode.value=="on")
+
+    supabase.table(
+        "guild_settings"
+    ).upsert({
+        "guild_id":guild_id,
+        "default_notify":value
+    }).execute()
 
     await interaction.response.send_message(
-        f"通知デフォルトを {mode.value.upper()} にしました",
+        f"デフォルト通知を {mode.value} に変更しました",
         ephemeral=True
     )
     
@@ -1176,7 +1272,7 @@ async def admin_notifymode(
 async def on_ready():
     try:
         print("READY ENTERED", flush=True)
-
+        load_guild_defaults()
         synced = await bot.tree.sync()
 
         print(f"SYNCED={len(synced)}", flush=True)
