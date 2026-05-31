@@ -1094,6 +1094,48 @@ async def help_command(interaction: discord.Interaction):
     )
 
 # =========================
+# /setting-list
+# =========================
+
+@bot.tree.command(
+    name="setting-list",
+    description="自分の設定確認"
+)
+async def setting_list(
+    interaction: discord.Interaction
+):
+
+    data = get_user_data(
+        interaction.guild.id,
+        interaction.user.id
+    )
+
+    embed = discord.Embed(
+        title="⚙ 自分の設定"
+    )
+
+    embed.add_field(
+        name="通知",
+        value=(
+            "ON"
+            if data["enabled"]
+            else "OFF"
+        ),
+        inline=False
+    )
+
+    embed.add_field(
+        name="通知モード",
+        value=data["mode"],
+        inline=False
+    )
+
+    await interaction.response.send_message(
+        embed=embed,
+        ephemeral=True
+    )
+
+# =========================
 # /setting-reset
 # =========================
 
@@ -1145,6 +1187,60 @@ async def setting_reset(
 
     await interaction.response.send_message(
         "自分の設定を初期化しました",
+        ephemeral=True
+    )
+
+# =========================
+# /admin-default-list
+# =========================
+
+@bot.tree.command(
+    name="admin-default-list",
+    description="サーバーデフォルト設定表示"
+)
+@checks.has_permissions(
+    administrator=True
+)
+async def admin_default_list(
+    interaction: discord.Interaction
+):
+
+    guild_id = str(
+        interaction.guild.id
+    )
+
+    default_enabled = default_notify.get(
+        guild_id,
+        True
+    )
+
+    notify_mode = guild_notify_mode.get(
+        guild_id,
+        "strict"
+    )
+
+    embed = discord.Embed(
+        title="🛠 サーバーデフォルト設定"
+    )
+
+    embed.add_field(
+        name="新規ユーザー通知",
+        value=(
+            "ON"
+            if default_enabled
+            else "OFF"
+        ),
+        inline=False
+    )
+
+    embed.add_field(
+        name="通知方式",
+        value=notify_mode,
+        inline=False
+    )
+
+    await interaction.response.send_message(
+        embed=embed,
         ephemeral=True
     )
 
