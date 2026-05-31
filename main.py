@@ -1070,22 +1070,29 @@ async def help_command(interaction: discord.Interaction):
         "**通知設定**\n"
         "/notify → 通知ON/OFF\n"
         "/notify-mode → 通知モード変更\n"
+        "/setting-list → 自分の設定確認\n"
+        "/setting-reset → 自分の設定初期化\n\n"
+
+        "**受信設定**\n"
         "/notify-add → 自分に通知する相手を追加\n"
         "/notify-remove → 通知対象削除\n"
-        "/notify-list → 通知対象一覧\n\n"
-
-        "**通知先設定**\n"
+        "/notify-list → 通知対象一覧\n"
+    
+        "**送信設定**\n"
         "/listener-add → 自分が参加した時の通知先追加\n"
         "/listener-remove → 通知先削除\n"
         "/listener-list → 通知先一覧\n\n"
-
+    
         "**通知条件**\n"
         "通知は『受信許可』と『送信許可』の両方が必要\n"
         "受信許可: ALL または /listener-add\n"
         "送信許可: ALL または /notify-add\n\n"
-
+    
         "**管理者**\n"
-        "/admin-setchannel → 通知チャンネル設定"
+        "/admin-setchannel → 通知チャンネル設定\n"
+        "/admin-defaultnotify → 新規ユーザー通知デフォルト変更\n"
+        "/admin-default-list → サーバーデフォルト設定表示\n"
+        "/admin-notifymode → 通知方式変更(strict/once)"
     )
 
     await interaction.response.send_message(
