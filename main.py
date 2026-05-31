@@ -88,10 +88,11 @@ def load_user(guild_id, user_id):
     default = {
         "guild_id": str(guild_id),
         "user_id": str(user_id),
-        "enabled": True,
-        "mode": "all",
-        "targets": [],
-        "listeners": []
+        "enabled": default_notify.get(
+            str(guild_id),
+            True
+        ),
+        "mode": "all"
     }
 
     supabase.table(
@@ -169,6 +170,7 @@ def get_user_data(guild_id, user_id):
 last_notify = {}
 COOLDOWN = 10
 
+default_notify = {}
 guild_notify_mode = {}
 
 # =========================
@@ -1083,6 +1085,50 @@ async def setchannel(interaction: discord.Interaction):
         ephemeral=True
     )
 
+# =========================
+# /admin-defaultnotify
+# =========================
+
+@bot.tree.command(
+    name="admin-defaultnotify",
+    description="通知初期値変更"
+)
+@checks.has_permissions(
+    administrator=True
+)
+@app_commands.describe(
+    mode="初期設定"
+)
+@app_commands.choices(
+    mode=[
+        app_commands.Choice(
+            name="ON",
+            value="on"
+        ),
+        app_commands.Choice(
+            name="OFF",
+            value="off"
+        )
+    ]
+)
+async def admin_defaultnotify(
+    interaction: discord.Interaction,
+    mode: app_commands.Choice[str]
+):
+
+    guild_id = str(
+        interaction.guild.id
+    )
+
+    default_notify[guild_id] = (
+        mode.value == "on"
+    )
+
+    await interaction.response.send_message(
+        f"通知デフォルトを {mode.value.upper()} にしました",
+        ephemeral=True
+    )
+    
 # =========================
 # /admin-notifymode
 # =========================
