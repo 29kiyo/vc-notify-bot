@@ -170,6 +170,17 @@ last_notify = {}
 COOLDOWN = 10
 
 # =========================
+# VC通知セッション管理
+# =========================
+
+active_sessions = {}
+# { guild_id : set(user_id) }
+
+notify_mode = {}
+# once = 新規参加者だけ通知
+# strict = セッション中は誰も通知しない
+
+# =========================
 # VC参加監視
 # =========================
 
@@ -193,7 +204,24 @@ async def on_voice_state_update(member, before, after):
         return
 
     if after.channel is None:
-        print("退出なので無視")
+
+        guild_id = str(member.guild.id)
+    
+        remaining = [
+            m for m in member.guild.members
+            if (
+                m.voice
+                and m.voice.channel
+                and not m.bot
+            )
+        ]
+    
+        if not remaining:
+    
+            print("VC空になったのでセッションリセット")
+    
+            active_sessions[guild_id] = set()
+    
         return
 
     print("VC参加検知")
@@ -212,6 +240,14 @@ async def on_voice_state_update(member, before, after):
     vc = after.channel
 
     guild_id = str(guild.id)
+
+    # サーバー初期化
+
+    if guild_id not in active_sessions:
+        active_sessions[guild_id] = set()
+    
+    if guild_id not in notify_mode:
+        notify_mode[guild_id] = "strict"
 
     print(f"guild_id={guild_id}")
     
@@ -242,6 +278,49 @@ async def on_voice_state_update(member, before, after):
         return
 
     mention_targets = []
+
+    session = active_sessions[guild_id]
+    mode = notify_mode[guild_id]
+    
+    # 既に通知済みなら処理しない
+    
+    if member.id in session:
+    
+        print("既通知ユーザー")
+        return
+    
+    # strictモード
+    
+    if mode == "strict":
+    
+        if session:
+    
+            print("strict: セッション中")
+            return
+    
+    # onceモード
+    
+    elif mode == "once":
+    
+        vc_members = [
+            m.id
+            for m in guild.members
+            if (
+                m.voice
+                and m.voice.channel
+                and not m.bot
+            )
+        ]
+    
+        already = all(
+            uid in session
+            for uid in vc_members
+        )
+    
+        if already:
+    
+            print("once: 全員通知済み")
+            return
 
     # =========================
     # 通常通知
@@ -353,6 +432,7 @@ async def on_voice_state_update(member, before, after):
     print(text)
     
     await send_channel.send(text)
+    active_sessions[guild_id].add(member.id)
 # ============================
 # list remove
 # ============================
@@ -1001,6 +1081,45 @@ async def setchannel(interaction: discord.Interaction):
         ephemeral=True
     )
 
+# =========================
+# /admin-notifymode
+# =========================
+
+@bot.tree.command(
+    name="admin-notifymode",
+    description="通知モード変更"
+)
+@checks.has_permissions(administrator=True)
+
+@app_commands.describe(
+    mode="once / strict"
+)
+
+@app_commands.choices(
+    mode=[
+        app_commands.Choice(
+            name="once (新規参加のみ通知)",
+            value="once"
+        ),
+        app_commands.Choice(
+            name="strict (1回だけ通知)",
+            value="strict"
+        )
+    ]
+)
+async def admin_notifymode(
+    interaction: discord.Interaction,
+    mode: app_commands.Choice[str]
+):
+
+    guild_id = str(interaction.guild.id)
+
+    notify_mode[guild_id] = mode.value
+
+    await interaction.response.send_message(
+        f"通知モード: {mode.value}",
+        ephemeral=True
+    )
 # =========================
 # 起動時
 # =========================
