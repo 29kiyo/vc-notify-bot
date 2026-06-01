@@ -6,7 +6,7 @@ VC参加時に条件に応じてメンション通知を送信します。
 
 ---
 ## 追加
-[vc-notify-bot]([https://29kiyo.github.io/bitcraft-market_vv2/](https://discord.com/oauth2/authorize?client_id=1509867713302888468&permissions=2147552256&integration_type=0&scope=bot+applications.commands))
+[vc-notify-bot](https://29kiyo.github.io/bitcraft-market_vv2/](https://discord.com/oauth2/authorize?client_id=1509867713302888468&permissions=2147552256&integration_type=0&scope=bot+applications.commands)
 
 ## 使用技術
 
