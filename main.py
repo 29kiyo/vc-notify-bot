@@ -37,6 +37,10 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
+    try:
+        supabase.table("guild_settings").select("guild_id").limit(1).execute()
+    except Exception:
+        pass
     return "Bot is running"
 
 def run_web():
