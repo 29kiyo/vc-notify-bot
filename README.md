@@ -117,3 +117,8 @@ TOKEN=
 SUPABASE_URL=
 SUPABASE_KEY=
 ```
+
+## 開発について
+
+このツールのコードはすべてAI（Claude）に書いてもらいました。
+
